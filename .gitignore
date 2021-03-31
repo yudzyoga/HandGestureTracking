@@ -1,3 +1,4 @@
 dataset
 .ipynb_checkpoints
 run.ipynb
+__pycache__
