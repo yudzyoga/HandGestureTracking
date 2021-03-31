@@ -99,6 +99,11 @@ class Hand_Graph_CNN():
                 return max(data_num)
             else:
                 return 0
+
+        if not os.path.exists(path):
+            print("creating dir {}".format(path))
+            os.mkdir(path)
+
         # check the existing dirs 
         gesture_dirs_exist = glob.glob(os.path.join(path, 'gesture_*'))
         gesture_dirs_exist = [int(dirs[-1]) for dirs in gesture_dirs_exist]
@@ -283,7 +288,7 @@ def main(args):
     all_data = []
     action = None
     
-    with mp_hands.Hands(min_detection_confidence=0.5, min_tracking_confidence=0.5, ) as hands:
+    with mp_hands.Hands(min_detection_confidence=0.5, min_tracking_confidence=0.5, max_num_hands=1) as hands:
         while True:
             pressedKey = cv2.waitKey(5) & 0xFF
             action = hg.pressed_key(pressedKey)
