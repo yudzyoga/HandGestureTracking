@@ -1,5 +1,5 @@
 import torch
-from util.SHREC_parse_data import *
+from util.DataPreprocess import *
 from util.Mydataset import *
 import torch.optim as optim
 import numpy as np
@@ -33,7 +33,7 @@ parser.add_argument('--dp_rate', type=float, default=0.2,
 
 def init_data_loader(data_cfg):
 
-    train_data, test_data = split_train_test(data_cfg)
+    train_data, test_data = split_train_test()
 
     train_dataset = Hand_Dataset(train_data, use_data_aug = True, time_len = 8)
 
@@ -59,10 +59,11 @@ def init_data_loader(data_cfg):
 
 
 def init_model(data_cfg):
-    if data_cfg == 0:
-        class_num = 14
-    elif data_cfg == 1:
-        class_num = 28
+#     if data_cfg == 0:
+#         class_num = 14
+#     elif data_cfg == 1:
+#         class_num = 28
+    class_num = 6
 
     model = DG_STA(class_num, args.dp_rate)
     model = torch.nn.DataParallel(model).cuda()
@@ -107,7 +108,7 @@ if __name__ == "__main__":
 
    #fold for saving trained model...
     #change this path to the fold where you want to save your pre-trained model
-    model_fold = "./model/SHREC_dp-{}_lr-{}_dc-{}/".format(args.dp_rate, args.learning_rate, args.data_cfg)
+    model_fold = "./model/dp-{}_lr-{}_dc-{}/".format(args.dp_rate, args.learning_rate, args.data_cfg)
     try:
         os.mkdir(model_fold)
     except:
@@ -128,8 +129,8 @@ if __name__ == "__main__":
 
 
     #
-    train_data_num = 1960
-    test_data_num = 840
+    train_data_num = 65
+    test_data_num = 12
     iter_per_epoch = int(train_data_num / args.batch_size)
 
     #parameters recording training log
