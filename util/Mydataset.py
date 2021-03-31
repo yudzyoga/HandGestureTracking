@@ -51,7 +51,7 @@ class Hand_Dataset(Dataset):
         skeleton = torch.from_numpy(skeleton).float()
         #print(skeleton.shape)
         # label
-        label = data_ele["label"] - 1 #
+        label = int(data_ele["label"]) - 1 #
 
         sample = {'skeleton': skeleton, "label" : label}
 
