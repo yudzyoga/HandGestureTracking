@@ -43,6 +43,25 @@ class Hand_Graph_CNN():
 
         # inspect mode on
         self.isInspectMode = args.inspect
+        self.inspectStatus = 0
+        self.resetInspect = True
+        self.imgStatus = 0
+        self.resetInspectImage = True
+
+        # dataset stored
+        self.dataset_ids = None
+        self.dataset_path = os.path.join('.', 'dataset')
+        self.gesture_id = None
+        self.data_id = None
+
+        self.on_loop = False
+        self.filenames = []
+        self.csv_x = []
+        self.csv_y = []
+        self.csv_z = [] 
+        self.csv_u = []
+        self.csv_v = []
+        self.csv_isincluded = [] 
 
         if (self.args.device_type == 'normal'):
             self.cap = cv2.VideoCapture(self.args.device_id)
@@ -257,9 +276,63 @@ class Hand_Graph_CNN():
                 self.isRecording = not self.isRecording
                 return 'record {}'.format(self.isRecording)
         elif(self.isInspectMode):
-            return None
+            if(key == ord('a')):
+                self.resetInspectImage = True
+                self.imgStatus -= 1
+                return 'prev_image'
+            elif(key == ord('d')):
+                self.resetInspectImage = True
+                self.imgStatus += 1
+                return 'next_image'
+            elif(key == ord('w')):
+                self.inspectStatus += 1
+                self.resetInspectImage = True
+                self.resetInspect = True
+                self.imgStatus = 1
+                return 'prev_data'
+            elif(key == ord('s')):
+                self.inspectStatus -= 1
+                self.resetInspectImage = True
+                self.resetInspect = True
+                self.imgStatus = 1
+                return 'next_data'
+            elif(key == ord('q')):
+                self.resetInspectImage = True
+                self.resetInspect = True
+                return 'stop'
+            elif(key == 32):
+                self.resetInspectImage = True
+                self.csv_isincluded[self.imgStatus] = int(not int(self.csv_isincluded[self.imgStatus]))
+                return None
         else:
+            if(key == ord('q')):
+                return 'stop'
             return None
+
+    def reload_dataset(self):
+        # save current dataset
+        if(self.on_loop):
+            self.write_data()
+        self.on_loop = True
+        self.resetInspect = False
+        self.inspectStatus = self.inspectStatus % len(self.dataset_ids)
+        self.gesture_id, self.data_id = self.dataset_ids[self.inspectStatus]
+        csv_dir = os.path.join(self.dataset_path, f'gesture_{self.gesture_id}', f'data{self.data_id}')
+        self.filenames, self.csv_x, self.csv_y, self.csv_z, \
+            self.csv_u, self.csv_v, self.csv_isincluded = load_csv(csv_dir)
+
+    def reload_image(self):
+        self.resetInspectImage = False
+        self.imgStatus = self.imgStatus % len(self.filenames)
+        print('gesture {}, data {}, image {}'.format(self.gesture_id, self.data_id, self.imgStatus))
+        img_path = os.path.join(self.dataset_path, f'gesture_{self.gesture_id}', f'data{self.data_id}', f'{self.filenames[self.imgStatus]}')
+        img = cv2.imread(img_path)
+        if(int(self.csv_isincluded[self.imgStatus])):
+            cv2.putText(img, f'Gesture {self.gesture_id} - Data {self.data_id} - Image {self.imgStatus} : Included', (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 0), 2)
+        else:
+            cv2.putText(img, f'Gesture {self.gesture_id} - Data {self.data_id} - Image {self.imgStatus} : Not included', (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 0, 255), 2)
+
+        return img
 
     def print_record_status(self):
         print(self.recordStatus)
@@ -271,15 +344,97 @@ class Hand_Graph_CNN():
         
         elif(self.args.device_type == 'realsense'):        
             self.pipeline.stop()
-            
+
+    def write_data(self):
+        path = os.path.join('.', 'dataset', f'gesture_{self.gesture_id}', f'data{self.data_id}')
+        filepath = os.path.join(path, 'skeleton.csv')
+        with open(filepath, "w+") as file:
+            writer = csv.writer(file)
+            writer.writerow(['filename', 'joint', 'x', 'y', 'z', 'u', 'v', 'isincluded'])
+            for i_img in range(len(self.filenames)):
+                for i_pt in range(len(self.csv_x[0])):
+                    filename, x, y, z, u, v, included = \
+                        self.filenames[i_img], self.csv_x[i_img][i_pt], self.csv_y[i_img][i_pt], \
+                        self.csv_z[i_img][i_pt], self.csv_u[i_img][i_pt], self.csv_v[i_img][i_pt], \
+                        self.csv_isincluded[i_img]
+                    writer.writerow([filename, i_pt, x, y, z, u, v, included])
+
+        # path = os.path.join('.', 'dataset', 'gesture_{}'.format(self.recordStatus), 'data{}'.format(self.data_dir_name[self.recordStatus - 1]))
+        # filepath = os.path.join(path, 'skeleton.csv')
+        # with open(filepath, "w+") as file:
+        #     writer = csv.writer(file)
+        #     writer.writerow(['filename', 'joint', 'x', 'y', 'z', 'u', 'v', 'isincluded'])
+        #     for (i_data, xyz_list) in enumerate(self.xyz_pos_list):
+        #         for (i_lm, xyz) in enumerate(xyz_list):
+        #             x, y, z = self.xyz_pos_list[i_data][i_lm]
+        #             u, v = self.uv_pos_list[i_data][i_lm]
+        #             writer.writerow(['{0:07}.jpg'.format(i_data), i_lm, x, y, z, u, v, 1])
+
+def load_csv(path):
+    csv_filename = []
+    csv_x, csv_y, csv_z, csv_u, csv_v, csv_isincluded = [], [], [], [], [], []
+    csv_x_arr, csv_y_arr, csv_z_arr, csv_u_arr, csv_v_arr, csv_isincluded_arr = [], [], [], [], [], []
+
+    with open(os.path.join(path, 'skeleton.csv')) as csv_file:
+        csv_reader = csv.reader(csv_file, delimiter=',')
+        line_count = 0
+        for i, row in enumerate(csv_reader):
+            if(i > 0):
+                csv_x_arr.append(row[2])
+                csv_y_arr.append(row[3])
+                csv_z_arr.append(row[4])
+                csv_u_arr.append(row[5])
+                csv_v_arr.append(row[6])
+                # csv_isincluded_arr.append(row[7])
+                if((i) % 21 == 0):
+                    csv_filename.append(row[0])
+                    csv_isincluded.append(row[7])#csv_isincluded_arr)
+                    csv_x.append(csv_x_arr)
+                    csv_y.append(csv_y_arr)
+                    csv_z.append(csv_z_arr)
+                    csv_u.append(csv_u_arr)
+                    csv_v.append(csv_v_arr)
+                    csv_x_arr, csv_y_arr, csv_z_arr, csv_u_arr, \
+                        csv_v_arr, csv_isincluded_arr = [], [], [], [], [], []
+    return csv_filename, csv_x, csv_y, csv_z, csv_u, csv_v, csv_isincluded
+
 def main_inspect(args):
     hg = Hand_Graph_CNN(args)
-    
 
+    # find each generated gesture and 
+    id_list = [[int(string.split('/')[2][8:]), int(string.split('/')[3][4:])] for string in glob.glob('./dataset/gesture_*/data*')]
+    id_arr = np.array(id_list)
+
+    if(len(id_arr) == 0):
+        pass
+
+    # load csv data
+    id_arr = id_arr[np.lexsort(np.fliplr(id_arr).T)]
+    dataset_path = os.path.join('.', 'dataset')
+    
+    hg.dataset_ids = id_arr
+    hg.dataset_path = dataset_path
+    
     while True:
         pressedKey = cv2.waitKey(5) & 0xFF
         action = hg.pressed_key(pressedKey)
+        
+        if(hg.resetInspect):
+            hg.reload_dataset()
 
+        if(hg.resetInspectImage):
+            img = hg.reload_image()
+
+        cv2.imshow('Inspector View', img)
+        if (action == None):
+            pass
+        elif (action == 'stop'):
+            break
+        else:
+            print(action)
+
+    hg.end_stream()
+      
 
 def main(args):
     hg = Hand_Graph_CNN(args)
