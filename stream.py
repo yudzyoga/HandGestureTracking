@@ -303,9 +303,9 @@ def main(args):
             image, results, stat, xyz_pos, uv_pos = hg.detect(hands, image, None)
 
             # record
-            if(hg.isRecordMode and hg.isRecording):
+            if(stat and hg.isRecordMode and hg.isRecording):
                 hg.store_data(image, xyz_pos, uv_pos)
-            elif(hg.isRecordMode and not hg.isRecording and hg.isRecording_temp):
+            elif(stat and hg.isRecordMode and not hg.isRecording and hg.isRecording_temp):
                 hg.write_data()
 
             # show results
