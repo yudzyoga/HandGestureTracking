@@ -58,10 +58,10 @@ def init_data_loader(data_cfg):
     return train_loader, val_loader
 
 
-def init_model(data_cfg):
-#     if data_cfg == 0:
+def init_model(args):
+#     if args.data_cfg == 0:
 #         class_num = 14
-#     elif data_cfg == 1:
+#     elif args.data_cfg == 1:
 #         class_num = 28
     class_num = 6
 
@@ -121,7 +121,7 @@ if __name__ == "__main__":
 
     #.........inital model
     print("\ninit model.............")
-    model = init_model(args.data_cfg)
+    model = init_model(args)
     model_solver = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=args.learning_rate)
 
     #........set loss

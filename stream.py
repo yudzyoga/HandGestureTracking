@@ -11,7 +11,6 @@ import time
 import glob
 import os
 import math
-import torch
 import argparse
 import numpy as np
 import os.path as osp
@@ -19,6 +18,11 @@ import pyrealsense2 as rs
 import mediapipe as mp
 import csv
 from typing import Union, Tuple, List
+
+# import elements to inference
+import torch
+import torch.optim as optim
+from train_on_custom import init_model, model_foreward
 
 class Hand_Graph_CNN():
     def __init__(self, args, cam_img_width=640, cam_img_height=480):
@@ -47,6 +51,17 @@ class Hand_Graph_CNN():
         self.resetInspect = True
         self.imgStatus = 0
         self.resetInspectImage = True
+
+        # inspector drawer
+        self.circle_radius: int = 2
+        self.color = (0, 0, 0)
+        self.linecolor = (0, 255, 0)
+        self.thickness: int = 1
+        self.line_thickness: int = 1
+        self.connections = [[0, 1], [1, 2], [2, 3], [3, 4], [0, 5], [0, 17], \
+               [5, 9], [9, 13], [13, 17], [5, 6], [6, 7], [7, 8], \
+               [9, 10], [10, 11], [11, 12], [13, 14], [14, 15], [15, 16], \
+               [17, 18], [18, 19], [19, 20]]
 
         # dataset stored
         self.dataset_ids = None
@@ -331,6 +346,21 @@ class Hand_Graph_CNN():
             cv2.putText(img, f'Gesture {self.gesture_id} - Data {self.data_id} - Image {self.imgStatus} : Included', (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 0), 2)
         else:
             cv2.putText(img, f'Gesture {self.gesture_id} - Data {self.data_id} - Image {self.imgStatus} : Not included', (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 0, 255), 2)
+        for i in range(len(self.connections)):
+            cv2.line(img, \
+                    (int(self.csv_u[self.imgStatus][self.connections[i][0]]), \
+                     int(self.csv_v[self.imgStatus][self.connections[i][0]])), \
+                    (int(self.csv_u[self.imgStatus][self.connections[i][1]]), \
+                     int(self.csv_v[self.imgStatus][self.connections[i][1]])),\
+                    self.linecolor, \
+                    self.line_thickness)
+        for i in range(len(self.connections)):
+            cv2.circle(img, \
+                        (int(self.csv_u[self.imgStatus][i]), \
+                         int(self.csv_v[self.imgStatus][i])), \
+                         self.circle_radius, \
+                         self.color, \
+                         self.thickness)
 
         return img
 
@@ -434,13 +464,69 @@ def main_inspect(args):
             print(action)
 
     hg.end_stream()
-      
+
+def main_inference(args):
+    hg = Hand_Graph_CNN(args)
+    mp_drawing = mp.solutions.drawing_utils
+    mp_hands = mp.solutions.hands
+    action = None
+    frame_count = 0
+    frame_per_take = 8
+    frame_gesture_list = []
+    
+    with mp_hands.Hands(min_detection_confidence=0.5, min_tracking_confidence=0.5, max_num_hands=1) as hands:
+        while True:
+            pressedKey = cv2.waitKey(5) & 0xFF
+            action = hg.pressed_key(pressedKey)
+
+            # calculate time
+            start_time = time.time()
+
+            # get frames
+            image, depth = hg.get_frames()
+
+            # process image
+            image, results, stat, xyz_pos, uv_pos = hg.detect(hands, image, None)
+
+            if(stat):
+                # frame_count += 1
+                # if(frame_count % frame_per_take == 0):
+                #     frame_count = 0
+                
+                # if(len(frame_gesture_list == 8)):
+                #     arr_gesture = np.array(frame_gesture_list).astype(np.float)
+                #     arr_gesture = torch.from_numpy(arr_gesture).reshape([1, 8, 21, 3]).float()
+                #     score = model(arr_gesture)
+
+
+                #     frame_gesture_list.pop(0)
+                #     pass
+                else:
+                    #process model
+                    pass
+                
+            
+            if (action == None):
+                pass
+            elif (action == 'stop'):
+                break
+            else:
+                print(action)
+
+            # show results
+            if(hg.render_output):
+                hg.show_result(mp_drawing, mp_hands, image, results)
+
+            end_time = time.time()
+            FPS = (1 / (end_time - start_time))
+            print ("FPS : {:.2f}".format(FPS))        
+                
+        hg.end_stream()
 
 def main(args):
     hg = Hand_Graph_CNN(args)
     mp_drawing = mp.solutions.drawing_utils
     mp_hands = mp.solutions.hands
-    all_data = []
     action = None
     
     with mp_hands.Hands(min_detection_confidence=0.5, min_tracking_confidence=0.5, max_num_hands=1) as hands:
@@ -498,9 +584,15 @@ if __name__ == "__main__":
         help="record the training set")
     ap.add_argument("--inspect", action='store_true',
         help="inspect the training set")
+    ap.add_argument("--inference", action='store_true',
+        help="realtime inference")
+    ap.add_argument("--model", type=str, default='', 
+        help="reference trained model")
     args = ap.parse_args()
 
     if(args.inspect):
         main_inspect(args)
+    elif(args.inference):
+        main_inference(args)
     else:
         main(args)
