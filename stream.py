@@ -230,7 +230,7 @@ class Hand_Graph_CNN():
                     cv2.putText(image, f'Recording : Gesture{self.recordStatus} - Take{self.data_dir_name[self.recordStatus - 1]}', (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
                 else:
                     cv2.putText(image, f'Not recording : Gesture{self.recordStatus} - Take{self.data_dir_name[self.recordStatus - 1]}', (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-            cv2.imshow('MediaPipe Hands', image)            
+        cv2.imshow('MediaPipe Hands', image)            
 
     def store_data(self, image, xyz_pos, uv_pos):
         self.image_count += 1
@@ -471,12 +471,21 @@ def main_inference(args):
     mp_hands = mp.solutions.hands
     action = None
     frame_count = 0
-    frame_per_take = 8
+    frame_per_take = 7
     frame_gesture_list = []
+    gesture_names = {
+        None: 'nothing',
+        0: 'grab',
+        1: 'release',
+        2: 'rotation_cw',
+        3: 'rotation_ccw',
+        4: 'swipe_left',
+        5: 'swipe_right'
+    }
 
     gesture_num = None
     class_num = 6
-    dp_rate = 0.2
+    dp_rate = 0
     model = init_model(dp_rate)
     model.load_state_dict(torch.load(args.model))
     
@@ -502,12 +511,18 @@ def main_inference(args):
                 
                 if(len(frame_gesture_list) == 8):
                     arr_gesture = np.array(frame_gesture_list).astype(np.float)
+                    MA_arr = np.average(arr_gesture, axis=0)
+                    ERR_arr = np.abs(xyz_pos - MA_arr)
+                    np.set_printoptions(precision=5, suppress=True)
+                    # np.set_printoptions(formatter={'float':"{0:0.3f}".format})
+                    print(ERR_arr)
+
                     arr_gesture = torch.from_numpy(arr_gesture).reshape([1, 8, 21, 3]).float()
                     score = model(arr_gesture)
                     frame_gesture_list.pop(0)
                     gesture_num = np.argmax(score.detach().cpu().numpy())
-
-                cv2.putText(image, f'Detect : Gesture_{gesture_num}', (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 0), 2)    
+                
+                cv2.putText(image, f'Detect : {gesture_names[gesture_num]}', (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 0), 2)    
 
             if (action == None):
                 pass
