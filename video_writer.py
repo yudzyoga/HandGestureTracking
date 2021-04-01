@@ -1,28 +1,45 @@
-import numpy as np
 import cv2
+from stream import *
 
-cap = cv2.VideoCapture(2)
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser(description="3D Hand Shape and Pose Inference")
+    ap.add_argument("--config-file", default="configs/eval_real_world_testset.yaml",
+        metavar="FILE", help="path to config file")
+    ap.add_argument("opts", help="Modify config options using the command-line",
+        default=None, nargs=argparse.REMAINDER)
+    ap.add_argument("--device-type", default='realsense', type=str,
+    	help="input device")
+    ap.add_argument("--device-id", default=0, type=int,
+        help="device id")
+    ap.add_argument("--no-render", action='store_true',
+        help="view the rendered output")
+    ap.add_argument("--record", action='store_true',
+        help="record the training set")
+    ap.add_argument("--inspect", action='store_true',
+        help="inspect the training set")
+    args = ap.parse_args()
 
-# Define the codec and create VideoWriter object
-fourcc = cv2.VideoWriter_fourcc(*'MPEG')
-out = cv2.VideoWriter('output.avi',fourcc, 20.0, (640,480))
-# out = cv2.VideoWriter('output.mp4', -1, 20.0, (640,480))
 
-while(cap.isOpened()):
-    ret, frame = cap.read()
-    if ret==True:
-        frame = cv2.flip(frame,0)
+    fourcc = cv2.VideoWriter_fourcc(*'MPEG')
+    out = cv2.VideoWriter('test_input.avi',fourcc, 30.0, (640,480))
 
-        # write the flipped frame
-        out.write(frame)
+    hg = Hand_Graph_CNN(args)
 
-        cv2.imshow('frame',frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+    while True:
+        pressedKey = cv2.waitKey(5) & 0xFF
+        action = hg.pressed_key(pressedKey)
+        
+        color, depth = hg.get_frames()
+
+        out.write(color)
+        cv2.imshow('frame',color)
+
+        if (action == None):
+            pass
+        elif (action == 'stop'):
             break
-    else:
-        break
+        else:
+            print(action)
 
-# Release everything if job is finished
-cap.release()
-out.release()
-cv2.destroyAllWindows()
+    hg.end_stream()
+    out.release()
