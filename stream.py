@@ -470,11 +470,14 @@ def main_inference(args):
     mp_drawing = mp.solutions.drawing_utils
     mp_hands = mp.solutions.hands
     action = None
+
+    gesture_thresh = 0.002
+    gesture_thresh_arr = gesture_thresh * np.ones((8, 21, 3))
     frame_count = 0
     frame_per_take = 7
     frame_gesture_list = []
     gesture_names = {
-        None: 'nothing',
+        None: 'not_moving',
         0: 'grab',
         1: 'release',
         2: 'rotation_cw',
@@ -513,14 +516,17 @@ def main_inference(args):
                     arr_gesture = np.array(frame_gesture_list).astype(np.float)
                     MA_arr = np.average(arr_gesture, axis=0)
                     ERR_arr = np.abs(xyz_pos - MA_arr)
-                    np.set_printoptions(precision=5, suppress=True)
-                    # np.set_printoptions(formatter={'float':"{0:0.3f}".format})
-                    print(ERR_arr)
+                    ERR_bool = np.all(ERR_arr > gesture_thresh_arr)
 
-                    arr_gesture = torch.from_numpy(arr_gesture).reshape([1, 8, 21, 3]).float()
-                    score = model(arr_gesture)
-                    frame_gesture_list.pop(0)
-                    gesture_num = np.argmax(score.detach().cpu().numpy())
+                    # np.set_printoptions(precision=5, suppress=True)
+                    # print(ERR_arr)
+                    if(not ERR_bool):
+                        arr_gesture = torch.from_numpy(arr_gesture).reshape([1, 8, 21, 3]).float()
+                        score = model(arr_gesture)
+                        frame_gesture_list.pop(0)
+                        gesture_num = np.argmax(score.detach().cpu().numpy())
+                    else:
+                        gesture_num = None
                 
                 cv2.putText(image, f'Detect : {gesture_names[gesture_num]}', (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 0), 2)    
 
