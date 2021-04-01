@@ -128,7 +128,8 @@ class Hand_Graph_CNN():
             for (i, i_dir) in enumerate(gesture_dirs_not_exist):
                 os.mkdir(os.path.join(path, 'gesture_{}'.format(i_dir)))
         def count_data_dirs(path, gesture_i):
-            data_num = [int(fullpath[-1]) for fullpath in glob.glob(os.path.join(path, f'gesture_{gesture_i}', 'data*'))]
+            # data_num = [int(fullpath[-1]) for fullpath in glob.glob(os.path.join(path, f'gesture_{gesture_i}', 'data*'))]
+            data_num = [int(fullpath.split('data')[-1]) for fullpath in glob.glob(os.path.join(path, f'gesture_{gesture_i}', 'data*'))]
             if(len(data_num) > 0):
                 return max(data_num)
             else:
@@ -327,7 +328,7 @@ class Hand_Graph_CNN():
     def reload_dataset(self):
         # save current dataset
         if(self.on_loop):
-            self.write_data()
+            self.write_data_inspect()
         self.on_loop = True
         self.resetInspect = False
         self.inspectStatus = self.inspectStatus % len(self.dataset_ids)
@@ -361,7 +362,6 @@ class Hand_Graph_CNN():
                          self.circle_radius, \
                          self.color, \
                          self.thickness)
-
         return img
 
     def print_record_status(self):
@@ -375,7 +375,7 @@ class Hand_Graph_CNN():
         elif(self.args.device_type == 'realsense'):        
             self.pipeline.stop()
 
-    def write_data(self):
+    def write_data_inspect(self):
         path = os.path.join('.', 'dataset', f'gesture_{self.gesture_id}', f'data{self.data_id}')
         filepath = os.path.join(path, 'skeleton.csv')
         with open(filepath, "w+") as file:
@@ -389,16 +389,18 @@ class Hand_Graph_CNN():
                         self.csv_isincluded[i_img]
                     writer.writerow([filename, i_pt, x, y, z, u, v, included])
 
-        # path = os.path.join('.', 'dataset', 'gesture_{}'.format(self.recordStatus), 'data{}'.format(self.data_dir_name[self.recordStatus - 1]))
-        # filepath = os.path.join(path, 'skeleton.csv')
-        # with open(filepath, "w+") as file:
-        #     writer = csv.writer(file)
-        #     writer.writerow(['filename', 'joint', 'x', 'y', 'z', 'u', 'v', 'isincluded'])
-        #     for (i_data, xyz_list) in enumerate(self.xyz_pos_list):
-        #         for (i_lm, xyz) in enumerate(xyz_list):
-        #             x, y, z = self.xyz_pos_list[i_data][i_lm]
-        #             u, v = self.uv_pos_list[i_data][i_lm]
-        #             writer.writerow(['{0:07}.jpg'.format(i_data), i_lm, x, y, z, u, v, 1])
+    def write_data(self):
+        path = os.path.join('.', 'dataset', 'gesture_{}'.format(self.recordStatus), 'data{}'.format(self.data_dir_name[self.recordStatus - 1]))
+        filepath = os.path.join(path, 'skeleton.csv')
+        with open(filepath, "w+") as file:
+            writer = csv.writer(file)
+            writer.writerow(['filename', 'joint', 'x', 'y', 'z', 'u', 'v', 'isincluded'])
+            for (i_data, xyz_list) in enumerate(self.xyz_pos_list):
+                for (i_lm, xyz) in enumerate(xyz_list):
+                    x, y, z = self.xyz_pos_list[i_data][i_lm]
+                    u, v = self.uv_pos_list[i_data][i_lm]
+                    writer.writerow(['{0:07}.jpg'.format(i_data), i_lm, x, y, z, u, v, 1])
+        self.data_dir_name[self.recordStatus - 1] += 1
 
 def load_csv(path):
     csv_filename = []
@@ -565,7 +567,7 @@ def main(args):
             # record
             if(stat and hg.isRecordMode and hg.isRecording):
                 hg.store_data(image, xyz_pos, uv_pos)
-            elif(stat and hg.isRecordMode and not hg.isRecording and hg.isRecording_temp):
+            elif((action or stat) and hg.isRecordMode and not hg.isRecording and hg.isRecording_temp):
                 hg.write_data()
 
             # show results
