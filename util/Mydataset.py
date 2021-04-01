@@ -43,8 +43,8 @@ class Hand_Dataset(Dataset):
         skeleton = [skeleton[idx] for idx in idx_list]
         skeleton = np.array(skeleton)
 
-        #normalize by palm center
-        skeleton -= skeleton[0][1]
+        #normalize by wrist center
+        skeleton -= skeleton[0][0]
 
 
 
