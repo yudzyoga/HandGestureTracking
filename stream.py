@@ -577,7 +577,9 @@ if __name__ == "__main__":
         default=None, nargs=argparse.REMAINDER)
     ap.add_argument("--device-type", default='normal', type=str,
     	help="input device")
-    ap.add_argument("--device-id", default=0, type=int,
+    # ap.add_argument("--device-id", default=0, type=int,
+    #     help="device id")
+    ap.add_argument("--device-id", default='./test_input.avi', type=str,
         help="device id")
     ap.add_argument("--no-render", action='store_true',
         help="view the rendered output")
