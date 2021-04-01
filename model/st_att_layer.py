@@ -216,4 +216,4 @@ class ST_ATT_Layer(nn.Module):
         for model in model_list:
             for p in model.parameters():
                 if p.dim() > 1:
-                    nn.init.xavier_uniform(p)
+                    nn.init.xavier_uniform_(p)
