@@ -473,6 +473,12 @@ def main_inference(args):
     frame_count = 0
     frame_per_take = 8
     frame_gesture_list = []
+
+    gesture_num = None
+    class_num = 6
+    dp_rate = 0.2
+    model = init_model(dp_rate)
+    model.load_state_dict(torch.load(args.model))
     
     with mp_hands.Hands(min_detection_confidence=0.5, min_tracking_confidence=0.5, max_num_hands=1) as hands:
         while True:
@@ -489,23 +495,20 @@ def main_inference(args):
             image, results, stat, xyz_pos, uv_pos = hg.detect(hands, image, None)
 
             if(stat):
-                # frame_count += 1
-                # if(frame_count % frame_per_take == 0):
-                #     frame_count = 0
+                frame_count += 1
+                if(frame_count % frame_per_take == 0):
+                    frame_gesture_list.append(xyz_pos)
+                    frame_count = 0
                 
-                # if(len(frame_gesture_list == 8)):
-                #     arr_gesture = np.array(frame_gesture_list).astype(np.float)
-                #     arr_gesture = torch.from_numpy(arr_gesture).reshape([1, 8, 21, 3]).float()
-                #     score = model(arr_gesture)
+                if(len(frame_gesture_list) == 8):
+                    arr_gesture = np.array(frame_gesture_list).astype(np.float)
+                    arr_gesture = torch.from_numpy(arr_gesture).reshape([1, 8, 21, 3]).float()
+                    score = model(arr_gesture)
+                    frame_gesture_list.pop(0)
+                    gesture_num = np.argmax(score.detach().cpu().numpy())
 
+                cv2.putText(image, f'Detect : Gesture_{gesture_num}', (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 0), 2)    
 
-                #     frame_gesture_list.pop(0)
-                #     pass
-                else:
-                    #process model
-                    pass
-                
-            
             if (action == None):
                 pass
             elif (action == 'stop'):
@@ -517,9 +520,7 @@ def main_inference(args):
             if(hg.render_output):
                 hg.show_result(mp_drawing, mp_hands, image, results)
 
-            end_time = time.time()
-            FPS = (1 / (end_time - start_time))
-            print ("FPS : {:.2f}".format(FPS))        
+            end_time = time.time()    
                 
         hg.end_stream()
 
@@ -586,7 +587,7 @@ if __name__ == "__main__":
         help="inspect the training set")
     ap.add_argument("--inference", action='store_true',
         help="realtime inference")
-    ap.add_argument("--model", type=str, default='', 
+    ap.add_argument("--model", type=str, default='./model/dp-0.2_lr-0.0001_dc-0/epoch_13_acc_1.0.pth', 
         help="reference trained model")
     args = ap.parse_args()
 

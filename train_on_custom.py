@@ -58,14 +58,14 @@ def init_data_loader(data_cfg):
     return train_loader, val_loader
 
 
-def init_model(args):
+def init_model(dp_rate):
 #     if args.data_cfg == 0:
 #         class_num = 14
 #     elif args.data_cfg == 1:
 #         class_num = 28
     class_num = 6
 
-    model = DG_STA(class_num, args.dp_rate)
+    model = DG_STA(class_num, dp_rate)
     model = torch.nn.DataParallel(model).cuda()
 
     return model
@@ -121,7 +121,7 @@ if __name__ == "__main__":
 
     #.........inital model
     print("\ninit model.............")
-    model = init_model(args)
+    model = init_model(args.dp_rate)
     model_solver = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=args.learning_rate)
 
     #........set loss
