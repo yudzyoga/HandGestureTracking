@@ -42,6 +42,9 @@ class Hand_Dataset(Dataset):
         idx_list = self.sample_frame(data_num)
         skeleton = [skeleton[idx] for idx in idx_list]
         skeleton = np.array(skeleton)
+        
+        # normalize by first frame
+        skeleton -= skeleton[0]
 
         #normalize by wrist center
         # skeleton -= skeleton[0][0]

@@ -537,6 +537,8 @@ def main_inference(args):
 
                     np.set_printoptions(precision=5, suppress=True)
                     if(isMoving):
+                        # put normalization
+                        arr_gesture -= arr_gesture[0]
                         arr_gesture = torch.from_numpy(arr_gesture).reshape([1, 8, 21, 3]).float()
                         score = model(arr_gesture)
                         gesture_num = np.argmax(score.detach().cpu().numpy())
