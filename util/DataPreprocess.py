@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import random
+from datetime import datetime
 import os
 
 dataset_fold = "dataset/"
@@ -26,7 +27,12 @@ def split_train_test():
         # get all joints from file
         for index, row in df.iterrows():
             if row.filename != last_filename:
-                all_data.append(np.array(joints))
+                # validate 21 joints
+                if np.array(joints).shape != (21,3):
+                    print('Joints are not complete in {}'.format(path_to_csv))
+                    print('Excluding: {}'.format(row.filename))
+                else:
+                    all_data.append(np.array(joints))
                 joints = []
                 last_filename = row.filename
             _joint = np.array([row.x, row.y, row.z])
@@ -49,10 +55,12 @@ def split_train_test():
 
         gestures = sorted([folder for folder in os.listdir(dataset_fold) if 'gesture' in folder])
         for gesture in gestures:
+            print('\nLoading data in {}'.format(gesture))
+            _start = datetime.now()
             label = gesture.split('_')[-1]
             videos = ['/' + data + '/' for data in os.listdir(dataset_fold + gesture)]
             random.shuffle(videos)
-            test_marks = videos[:2]
+            test_marks = videos[:7]
             for video in videos:
                 _dict = {}
                 skeleton_path = dataset_fold + gesture + video + 'skeleton.csv'
@@ -66,7 +74,7 @@ def split_train_test():
                 else:
                     print("Can't find {}".format(skeleton_path))
                     pass
-                
+            print('Took: {}'.format(datetime.now() - _start))
         return train_data, test_data
 
     

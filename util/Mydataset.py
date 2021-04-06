@@ -47,8 +47,12 @@ class Hand_Dataset(Dataset):
         # skeleton -= skeleton[0][0]
 
 
-
-        skeleton = torch.from_numpy(skeleton).float()
+        try:
+            skeleton = torch.from_numpy(skeleton).float()
+        except:
+            print(skeleton.shape)
+            print(skeleton)
+            raise Exception("skeleton format or shape is wrong!")
         #print(skeleton.shape)
         # label
         label = int(data_ele["label"]) - 1 #

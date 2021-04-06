@@ -222,6 +222,7 @@ class Hand_Graph_CNN():
 
     def show_result(self, mp_drawing, mp_hands, image, results):
     # show results
+        cv2.namedWindow('MediaPipe Hands', cv2.WINDOW_NORMAL)
         if results.multi_hand_landmarks:
             for hand_landmarks in results.multi_hand_landmarks:
                 mp_drawing.draw_landmarks(
@@ -609,7 +610,7 @@ if __name__ == "__main__":
         help="inspect the training set")
     ap.add_argument("--inference", action='store_true',
         help="realtime inference")
-    ap.add_argument("--model", type=str, default='./model/dp-0.2_lr-0.0001_dc-0/epoch_13_acc_1.0.pth', 
+    ap.add_argument("--model", type=str, default='./model/dp-0.2_lr-0.0001_dc-0/epoch_53_acc_1.0.pth', 
         help="reference trained model")
     args = ap.parse_args()
 

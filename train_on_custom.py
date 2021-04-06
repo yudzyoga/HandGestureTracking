@@ -8,6 +8,7 @@ import time
 import argparse
 import os
 from model.network import *
+import pickle
 
 parser = argparse.ArgumentParser()
 
@@ -23,46 +24,60 @@ parser.add_argument('--patiences', default=50, type=int,
                     help='number of epochs to tolerate the no improvement of val_loss')  # 1000
 
 
-parser.add_argument('--data_cfg', type=int, default=0,
-                    help='0 for 14 class, 1 for 28')
+parser.add_argument('--load_dict', type=int, default=0,
+                    help='0 for load from folders, 1 for load from pkl')
 
 
 parser.add_argument('--dp_rate', type=float, default=0.2,
                     help='dropout rate')  # 1000
 
 
-def init_data_loader(data_cfg):
+def init_data_loader(load_dict):
 
-    train_data, test_data = split_train_test()
+    if load_dict == 0:
+        train_data, test_data = split_train_test()
 
-    train_dataset = Hand_Dataset(train_data, use_data_aug = True, time_len = 8)
+        train_dataset = Hand_Dataset(train_data, use_data_aug = True, time_len = 8)
 
-    test_dataset = Hand_Dataset(test_data, use_data_aug = False, time_len = 8)
+        test_dataset = Hand_Dataset(test_data, use_data_aug = False, time_len = 8)
 
-    print("train data num: ",len(train_dataset))
-    print("test data num: ",len(test_dataset))
+        print("train data num: ",len(train_dataset))
+        print("test data num: ",len(test_dataset))
 
-    print("batch size:", args.batch_size)
-    print("workers:", args.workers)
+        print("batch size:", args.batch_size)
+        print("workers:", args.workers)
 
-    train_loader = torch.utils.data.DataLoader(
-        train_dataset,
-        batch_size=args.batch_size, shuffle=True,
-        num_workers=args.workers, pin_memory=False)
+        train_loader = torch.utils.data.DataLoader(
+            train_dataset,
+            batch_size=args.batch_size, shuffle=True,
+            num_workers=args.workers, pin_memory=False)
 
-    val_loader = torch.utils.data.DataLoader(
-        test_dataset,
-        batch_size=args.batch_size, shuffle=False,
-        num_workers=args.workers, pin_memory=False)
+        val_loader = torch.utils.data.DataLoader(
+            test_dataset,
+            batch_size=args.batch_size, shuffle=False,
+            num_workers=args.workers, pin_memory=False)
+        
+
+        train_loader_file = open("dataset/train_data.pkl", "wb")
+        pickle.dump(train_loader, train_loader_file)
+        train_loader_file.close()
+
+        val_loader_file = open("dataset/val_data.pkl", "wb")
+        pickle.dump(val_loader, val_loader_file)
+        val_loader_file.close()
+    else: # load_dict == 1
+        train_loader_file = open("dataset/train_data.pkl", "rb")
+        train_loader = pickle.load(train_loader_file)
+        train_loader_file.close()
+
+        val_loader_file = open("dataset/val_data.pkl", "rb")
+        val_loader = pickle.load(val_loader_file)
+        val_loader_file.close()
 
     return train_loader, val_loader
 
 
 def init_model(dp_rate):
-#     if args.data_cfg == 0:
-#         class_num = 14
-#     elif args.data_cfg == 1:
-#         class_num = 28
     class_num = 6
 
     model = DG_STA(class_num, dp_rate)
@@ -102,22 +117,20 @@ torch.backends.cudnn.benchmark = False
 
 if __name__ == "__main__":
 
-    print("\nhyperparamter......")
+    print("\nhyperparameter......")
     args = parser.parse_args()
     print(args)
 
    #fold for saving trained model...
     #change this path to the fold where you want to save your pre-trained model
-    model_fold = "./model/dp-{}_lr-{}_dc-{}/".format(args.dp_rate, args.learning_rate, args.data_cfg)
+    model_fold = "./model/dp-{}_lr-{}/".format(args.dp_rate, args.learning_rate)
     try:
         os.mkdir(model_fold)
     except:
         pass
 
 
-
-    train_loader, val_loader = init_data_loader(args.data_cfg)
-
+    train_loader, val_loader = init_data_loader(args.load_dict)
 
     #.........inital model
     print("\ninit model.............")
@@ -220,4 +233,8 @@ if __name__ == "__main__":
 
             if no_improve_epoch > args.patiences:
                 print("stop training....")
+                break
+
+            if max_acc == 1.0:
+                print('achieved max accuracy! training will stop.....')
                 break

@@ -1,0 +1,7 @@
+id,desc
+1,grab
+2,release
+3,rotation_cw
+4,rotation_ccw
+5,swipe_left
+6,swipe_right
