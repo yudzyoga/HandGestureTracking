@@ -1,6 +1,7 @@
 from .st_att_layer import *
 import torch.nn as nn
 import torch
+import torch.nn.functional as F
 
 class DG_STA(nn.Module):
     def __init__(self, num_classes, dp_rate):
@@ -41,5 +42,11 @@ class DG_STA(nn.Module):
         x = self.t_att(x)
 
         x = x.sum(1) / x.shape[1]
-        pred = self.cls(x)
+        
+        # pred = self.cls(x)
+        
+        x = self.cls(x)
+        
+        pred = nn.Softmax(dim=1)(x)
+    
         return pred

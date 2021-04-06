@@ -158,6 +158,8 @@ class Hand_Graph_CNN():
             ret, frame = self.cap.read()
             if ret:
                 return frame, None
+            else:
+                return None, None
             
         elif (self.args.device_type == 'realsense'):
             # Get frameset of color and depth
@@ -232,7 +234,8 @@ class Hand_Graph_CNN():
                     cv2.putText(image, f'Recording : Gesture{self.recordStatus} - Take{self.data_dir_name[self.recordStatus - 1]}', (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
                 else:
                     cv2.putText(image, f'Not recording : Gesture{self.recordStatus} - Take{self.data_dir_name[self.recordStatus - 1]}', (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-        cv2.imshow('MediaPipe Hands', image)            
+        cv2.imshow('MediaPipe Hands', image)  
+        return image          
 
     def store_data(self, image, xyz_pos, uv_pos):
         self.image_count += 1
@@ -473,6 +476,16 @@ def main_inference(args):
     mp_drawing = mp.solutions.drawing_utils
     mp_hands = mp.solutions.hands
     action = None
+    if(args.save):
+        fourcc = cv2.VideoWriter_fourcc(*'XVID')
+        input_name = args.device_id.split('.')[0]
+        model_name = [item for item in args.model.split('/') if "dp" in item][0]
+        print(input_name)
+        print(model_name)
+        
+        out_name = f'output_{input_name}_{model_name}.avi'
+        #output_{input-video}_{choosen-model}.avi
+        out = cv2.VideoWriter(out_name,fourcc, 30.0, (640,480))
 
     gesture_thresh = 0.004
     frame_count = 0
@@ -504,7 +517,9 @@ def main_inference(args):
 
             # get frames
             image, depth = hg.get_frames()
-
+            
+            if(image is None):
+                break
             # process image
             image, results, stat, xyz_pos, uv_pos = hg.detect(hands, image, None)
 
@@ -528,7 +543,12 @@ def main_inference(args):
                     else:
                         gesture_num = None
                     frame_gesture_list.pop(0)
-                cv2.putText(image, f'Detect : {gesture_names[gesture_num]}', (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 0), 2)    
+                # end_time = time.time()  
+                # FPS = "{:.2f}".format(1 / (end_time - start_time))
+                # cv2.putText(image, f'Detect : {gesture_names[gesture_num]}', (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 0), 2)    
+                # cv2.putText(image, f'FPS : {FPS}', (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 0), 2)    
+                # if(args.save):
+                    # out.write(image)
 
             if (action == None):
                 pass
@@ -539,10 +559,17 @@ def main_inference(args):
 
             # show results
             if(hg.render_output):
-                hg.show_result(mp_drawing, mp_hands, image, results)
-
-            end_time = time.time()    
-                
+                image = hg.show_result(mp_drawing, mp_hands, image, results)
+                if(args.save):
+                    end_time = time.time()  
+                    FPS = "{}".format(int(1 / (end_time - start_time)))
+                    cv2.putText(image, f'Detect : {gesture_names[gesture_num]}', (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (71, 74, 24), 2)    
+                    cv2.putText(image, f'FPS : {FPS}', (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (71, 74, 24), 2)    
+                    out.write(image)
+            # end_time = time.time()    
+        
+        if(args.save):
+            out.release()
         hg.end_stream()
 
 def main(args):
@@ -573,7 +600,7 @@ def main(args):
 
             # show results
             if(hg.render_output):
-                hg.show_result(mp_drawing, mp_hands, image, results)
+                _ = hg.show_result(mp_drawing, mp_hands, image, results)
 
             end_time = time.time()
             FPS = (1 / (end_time - start_time))
@@ -612,6 +639,8 @@ if __name__ == "__main__":
         help="realtime inference")
     ap.add_argument("--model", type=str, default='./model/dp-0.2_lr-0.0001_dc-0/epoch_53_acc_1.0.pth', 
         help="reference trained model")
+    ap.add_argument("--save", action='store_true', 
+        help="save the inference video")    
     args = ap.parse_args()
 
     if(args.inspect):
