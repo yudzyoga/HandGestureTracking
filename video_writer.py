@@ -21,7 +21,7 @@ if __name__ == "__main__":
 
 
     fourcc = cv2.VideoWriter_fourcc(*'MPEG')
-    out = cv2.VideoWriter('test_input.avi',fourcc, 30.0, (640,480))
+    out = cv2.VideoWriter('test_input3.avi',fourcc, 30.0, (640,480))
 
     hg = Hand_Graph_CNN(args)
 
