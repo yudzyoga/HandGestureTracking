@@ -506,6 +506,7 @@ def main_inference(args):
     dp_rate = 0
     model = init_model(dp_rate)
     model.load_state_dict(torch.load(args.model))
+    target_list = [0, 0, 0, 0]
     
     with mp_hands.Hands(min_detection_confidence=0.5, min_tracking_confidence=0.5, max_num_hands=1) as hands:
         while True:
@@ -541,10 +542,15 @@ def main_inference(args):
                         arr_gesture -= arr_gesture[0]
                         arr_gesture = torch.from_numpy(arr_gesture).reshape([1, 8, 21, 3]).float()
                         score = model(arr_gesture)
+                        # print(score)
                         gesture_num = np.argmax(score.detach().cpu().numpy())
                     else:
                         gesture_num = None
                     frame_gesture_list.pop(0)
+                    target_list.append(gesture_num)
+                    target_list.pop(0)
+
+                    gesture_num = max(set(target_list), key=target_list.count)
                 # end_time = time.time()  
                 # FPS = "{:.2f}".format(1 / (end_time - start_time))
                 # cv2.putText(image, f'Detect : {gesture_names[gesture_num]}', (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 0), 2)    
@@ -561,12 +567,16 @@ def main_inference(args):
 
             # show results
             if(hg.render_output):
+                end_time = time.time()  
+                FPS = "{}".format(int(1 / (end_time - start_time)))
+                cv2.putText(image, f'Detect : {gesture_names[gesture_num]}', (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (71, 74, 24), 2)    
+                cv2.putText(image, f'FPS : {FPS}', (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (71, 74, 24), 2)    
                 image = hg.show_result(mp_drawing, mp_hands, image, results)
                 if(args.save):
                     end_time = time.time()  
-                    FPS = "{}".format(int(1 / (end_time - start_time)))
-                    cv2.putText(image, f'Detect : {gesture_names[gesture_num]}', (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (71, 74, 24), 2)    
-                    cv2.putText(image, f'FPS : {FPS}', (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (71, 74, 24), 2)    
+                    # FPS = "{}".format(int(1 / (end_time - start_time)))
+                    # cv2.putText(image, f'Detect : {gesture_names[gesture_num]}', (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (71, 74, 24), 2)    
+                    # cv2.putText(image, f'FPS : {FPS}', (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (71, 74, 24), 2)    
                     out.write(image)
             # end_time = time.time()    
         

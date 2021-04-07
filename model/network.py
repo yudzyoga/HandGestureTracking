@@ -46,7 +46,11 @@ class DG_STA(nn.Module):
         # pred = self.cls(x)
         
         x = self.cls(x)
-        
+
+        # pred = nn.Softmax(dim=1)(x)
+        ratio = -0.1
+        x[:, 2:4] = ratio * abs(x[:, 2:4])
+        pred = x
         pred = nn.Softmax(dim=1)(x)
     
         return pred
