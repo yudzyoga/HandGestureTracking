@@ -4,11 +4,13 @@ import torch
 import torch.nn.functional as F
 
 class DG_STA(nn.Module):
-    def __init__(self, num_classes, dp_rate):
+    def __init__(self, num_classes, dp_rate, isTraining=0):
         super(DG_STA, self).__init__()
 
         h_dim = 32
         h_num= 8
+
+        self.isTraining = isTraining
 
         self.input_map = nn.Sequential(
             nn.Linear(3, 128),
@@ -48,8 +50,9 @@ class DG_STA(nn.Module):
         x = self.cls(x)
 
         # pred = nn.Softmax(dim=1)(x)
-        ratio = -0.1
-        x[:, 2:4] = ratio * abs(x[:, 2:4])
+        if not self.isTraining:
+            ratio = -0.1
+            x[:, 2:4] = ratio * abs(x[:, 2:4])
         pred = x
         pred = nn.Softmax(dim=1)(x)
     

@@ -77,10 +77,10 @@ def init_data_loader(load_dict):
     return train_loader, val_loader
 
 
-def init_model(dp_rate):
+def init_model(dp_rate, isTraining):
     class_num = 6
 
-    model = DG_STA(class_num, dp_rate)
+    model = DG_STA(class_num, dp_rate, isTraining=isTraining)
     model = torch.nn.DataParallel(model).cuda()
 
     return model
@@ -134,7 +134,7 @@ if __name__ == "__main__":
 
     #.........inital model
     print("\ninit model.............")
-    model = init_model(args.dp_rate)
+    model = init_model(args.dp_rate, isTraining=1)
     model_solver = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=args.learning_rate)
 
     #........set loss
@@ -165,14 +165,15 @@ if __name__ == "__main__":
                 continue
             score,loss, acc = model_foreward(sample_batched, model, criterion)
 
-            model.zero_grad()
-            loss.backward()
-            #clip_grad_norm_(model.parameters(), 0.1)
-            model_solver.step()
+            with torch.autograd.set_detect_anomaly(True):
+                model.zero_grad()
+                loss.backward()
+                #clip_grad_norm_(model.parameters(), 0.1)
+                model_solver.step()
 
 
-            train_acc += acc
-            train_loss += loss
+                train_acc += acc
+                train_loss += loss
 
             #print(i)
 

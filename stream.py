@@ -504,7 +504,7 @@ def main_inference(args):
     gesture_num = None
     class_num = 6
     dp_rate = 0
-    model = init_model(dp_rate)
+    model = init_model(dp_rate, isTraining=0)
     model.load_state_dict(torch.load(args.model))
     target_list = [0, 0, 0, 0]
     
